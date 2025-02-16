@@ -30,6 +30,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Optional;
+
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -86,17 +90,28 @@ public class OrderProcessingControllerTests {
 
     @Test
     void shouldHandleOutOfStockProducts() throws Exception {
-        // Arrange
-        //Product outOfStockProduct = testProducts.get(1); // USB Dongle with 0 quantity
+        // Given
+        Product product = new Product();
+        product.setType(ProductType.NORMAL);
+        product.setAvailable(0);  // Out of stock
+        product.setLeadTime(5);
+        product.setName("Test Product");
         
-        // Act
-        mockMvc.perform(post("/v2/orders/{orderId}/process", testOrder.getId())
-                .contentType("application/json"))
-                .andExpect(status().isOk());
+        Order order = new Order();
+        order.setId(1L);
+        order.setItems(Set.of(product));
 
-        // Assert
-        verify(notificationService, times(1))
-            .sendDelayNotification(anyInt(), anyString());
+
+        // When
+        mockMvc.perform(post("/v2/orders/{orderId}/process", 1L))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.id").value(1L));
+
+        // Then
+        verify(notificationService, times(1)).sendDelayNotification(
+            product.getLeadTime(), 
+            product.getName()
+        );
     }
 
     @Test
